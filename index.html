@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>🚀 Meteor Rush DX</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      font-family: monospace;
+      background-color: #000;
+      color: #fff;
+    }
+
+    canvas {
+      display: block;
+      background: linear-gradient(to top, #000000, #001f3f);
+    }
+
+    #hud {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      font-size: 16px;
+      z-index: 1;
+    }
+
+    #game-over {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 28px;
+      background: rgba(0, 0, 0, 0.9);
+      padding: 20px 40px;
+      border: 2px solid red;
+      display: none;
+      text-align: center;
+    }
+
+    #game-over button {
+      margin-top: 10px;
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="canvas" width="400" height="600"></canvas>
+  <div id="hud">
+    ❤️❤️❤️<br>
+    Puntaje: <span id="score">0</span><br>
+    Récord: <span id="highscore">0</span>
+  </div>
+  <div id="game-over">
+    💥 GAME OVER<br>
+    Puntaje: <span id="final-score">0</span><br>
+    <button onclick="location.reload()">Reintentar</button>
+  </div>
+
+  <!-- MÚSICA y EFECTOS -->
+  <audio id="bgm" loop>
+    <source src="https://upload.wikimedia.org/wikipedia/commons/c/c8/8-bit-loop.ogg" type="audio/ogg">
+  </audio>
+  <audio id="explosion-sound">
+    <source src="https://www.soundjay.com/mechanical/sounds/explosion-01.mp3" type="audio/mpeg">
+  </audio>
+
+  <script>
+    // 🔊 Activar música tras interacción
+    function startMusic() {
+      const bgm = document.getElementById("bgm");
+      bgm.volume = 0.3;
+      bgm.play().catch(() => {});
+      document.removeEventListener("keydown", startMusic);
+      document.removeEventListener("click", startMusic);
+    }
+    document.addEventListener("keydown", startMusic);
+    document.addEventListener("click", startMusic);
+    
+    // 🎮 Variables y lógica del juego
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+    const hud = document.getElementById("hud");
+    const scoreText = document.getElementById("score");
+    const highscoreText = document.getElementById("highscore");
+    const finalScoreText = document.getElementById("final-score");
+    const explosionSound = document.getElementById("explosion-sound");
+    
+    let player = {
+      x: 180,
+      y: 520,
+      width: 40,
+      height: 40,
+      speed: 5,
+      lives: 3,
+      sprite: "🚀"
+    };
+    
+    const keys = {};
+    let meteoritos = [];
+    let score = 0;
+    let highscore = localStorage.getItem("meteorHighscore") || 0;
+    let gameOver = false;
+    
+    document.addEventListener("keydown", e => keys[e.key] = true);
+    document.addEventListener("keyup", e => keys[e.key] = false);
+    
+    // ... (todo el resto del juego igual)    
+
+    function drawPlayer() {
+      ctx.font = "32px serif";
+      ctx.fillText(player.sprite, player.x, player.y + 30);
+    }
+
+    function drawMeteor(m) {
+      ctx.font = "28px serif";
+      ctx.fillText("☄️", m.x, m.y);
+    }
+
+    function update() {
+      if (gameOver) return;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Movimiento
+      if (keys["ArrowLeft"] && player.x > 0) player.x -= player.speed;
+      if (keys["ArrowRight"] && player.x < canvas.width - player.width) player.x += player.speed;
+
+      drawPlayer();
+
+      // Generar meteoritos
+      if (Math.random() < 0.03) {
+        meteoritos.push({
+          x: Math.random() * (canvas.width - 30),
+          y: -30,
+          speed: Math.random() * 3 + 2
+        });
+      }
+
+      // Dibujar y mover meteoritos
+      for (let i = 0; i < meteoritos.length; i++) {
+        let m = meteoritos[i];
+        m.y += m.speed;
+        drawMeteor(m);
+
+        // Colisión
+        if (
+          m.x > player.x - 20 &&
+          m.x < player.x + player.width &&
+          m.y > player.y - 20 &&
+          m.y < player.y + player.height
+        ) {
+          meteoritos.splice(i, 1);
+          i--;
+          player.lives--;
+          explosionSound.play();
+          updateLives();
+
+          if (player.lives <= 0) endGame();
+        }
+
+        // Fuera de pantalla
+        if (m.y > canvas.height + 30) {
+          meteoritos.splice(i, 1);
+          i--;
+          score++;
+          scoreText.textContent = score;
+        }
+      }
+
+      requestAnimationFrame(update);
+    }
+
+    function updateLives() {
+      const hearts = "❤️".repeat(player.lives);
+      hud.innerHTML = `${hearts}<br>Puntaje: <span id="score">${score}</span><br>Récord: <span id="highscore">${highscore}</span>`;
+    }
+
+    function endGame() {
+      gameOver = true;
+      finalScoreText.textContent = score;
+      document.getElementById("game-over").style.display = "block";
+
+      if (score > highscore) {
+        localStorage.setItem("meteorHighscore", score);
+      }
+    }
+
+    highscoreText.textContent = highscore;
+    update();
+  </script>
+</body>
+</html>
